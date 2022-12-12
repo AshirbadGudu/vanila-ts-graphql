@@ -1,15 +1,15 @@
+import query from "./query";
 import "./style.css";
-const continentsHTML = document.querySelector("#continents");
+const continentsHTML: HTMLSelectElement | null =
+  document.querySelector("#continents");
+const countriesHTML: HTMLOListElement | null =
+  document.querySelector("#countries");
 (async () => {
   try {
-    const response = await fetch("https://countries.trevorblades.com/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: `{ continents { name, code } }` }),
-    });
-    const result = await response.json();
-    const continents: Array<{ name: string; code: string }> =
-      result.data.continents;
+    const result = await query<{
+      data: { continents: Array<{ name: string; code: string }> };
+    }>(`{ continents { name, code } }`);
+    const continents = result.data.continents;
     continents.forEach((continent) => {
       const opt = document.createElement("option");
       opt.value = continent.code;
@@ -19,4 +19,20 @@ const continentsHTML = document.querySelector("#continents");
   } catch (error) {
     console.log(error);
   }
+
+  continentsHTML?.addEventListener("change", async (e) => {
+    const selectTarget = e.target as HTMLSelectElement;
+    const result = await query<{
+      data: { continent: { countries: Array<{ name: string }> } };
+    }>(
+      ` query getCountries($code: ID!) { continent(code: $code) { countries { name } } } `,
+      { code: selectTarget.value }
+    );
+    if (countriesHTML) countriesHTML.innerHTML = ``;
+    result.data.continent.countries.forEach((country) => {
+      const ol = document.createElement("option");
+      ol.innerText = country.name;
+      countriesHTML?.append(ol);
+    });
+  });
 })();
